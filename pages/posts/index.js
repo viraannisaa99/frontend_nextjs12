@@ -1,42 +1,63 @@
-//layout
-import Layout from "../../components/layout";
-
-//import Link
-import Link from "next/link";
-
-//import axios
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-
+import Link from "next/link";
+import Cookies from "js-cookie";
 import { useRouter } from "next/router";
-
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import Layout from "../../components/layout";
 
-//fetch with "getServerSideProps"
-export async function getServerSideProps() {
-	//http request
-	const req = await axios.get(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/posts`);
-	const res = await req.data.data.data;
+// main react componnent for page
+function PostIndex() {
+	/**
+	 * useState digunakan untuk menambah atau mengupdate state.
+	 * create state variable bernama posts untuk menampung list data posr
+	 * state akan terupdate saat fetch/delete posts dengan menggunakaan setPosts
+	 */
+	const [posts, setPosts] = useState([]);
+	const router = useRouter(); // access router object
 
-	return {
-		props: {
-			posts: res ?? [], // <-- assign response
-		},
+	/**
+	 * fetch list posts dari endpoint API dan tambahkan header authorization untuk menerapkan token
+	 * set posts stat dengan response data
+	 */
+	const fetchData = async () => {
+		try {
+			const token = Cookies.get("token");
+			const response = await axios.get(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/posts`, {
+				headers: {
+					Accept: "application/json",
+					Authorization: `Bearer ${token}`,
+				},
+			});
+			setPosts(response.data.data.data);
+		} catch (error) {
+			console.error("Error fetching data:", error);
+		}
 	};
-}
 
-function PostIndex(props) {
-	const { posts } = props;
-
-	const router = useRouter();
-
-	const refreshData = () => {
-		router.replace(router.asPath);
-	};
+	/**
+	 * useEffect digunakan untuk menjalankan fungsi pada komponen saat mounting
+	 * atau saat komponen diupdate.
+	 *
+	 * useEffect memungkinkan kita untuk melakukan side effect di dalam komponen fungsiional.
+	 * Side effect adalah tindakan yang tidak langsung terkait dengan rendering dari komponen,
+	 * seperti menanggil API atau mengatur event listener.
+	 *
+	 * run fetchdata ketika komponen dimount/dipadang.
+	 * pstikan bahwa data diambil dan ditampilkan saat halaman pertama kali dirender
+	 */
+	useEffect(() => {
+		fetchData();
+	}, []);
 
 	const deletePost = async (id) => {
-		await axios.delete(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/posts/${id}`);
-		refreshData();
+		try {
+			await axios.delete(`${process.env.NEXT_PUBLIC_API_BACKEND}/api/posts/${id}`);
+			fetchData();
+		} catch (error) {
+			console.error("Error deleting post:", error);
+		}
 	};
 
 	return (
@@ -92,5 +113,4 @@ function PostIndex(props) {
 		</Layout>
 	);
 }
-
 export default PostIndex;
